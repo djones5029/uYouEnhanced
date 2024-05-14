@@ -168,7 +168,7 @@ extern NSBundle *uYouPlusBundle();
     [sectionItems addObject:bug];
 
     YTSettingsSectionItem *developers = [%c(YTSettingsSectionItem)
-        itemWithTitle:LOC(@"Support the Developers")
+        itemWithTitle:LOC(@"SUPPORT_THE_DEVELOPERS")
         titleDescription:LOC(@"MiRO92, PoomSmart, level3tjg, BandarHL, julioverne & Galactic-dev")
         accessibilityIdentifier:nil
         detailTextBlock:^NSString *() {
@@ -179,6 +179,53 @@ extern NSBundle *uYouPlusBundle();
         }
     ];
     [sectionItems addObject:developers];
+
+/* UNFINISHED BUTTON
+    YTSettingsSectionItem *copySettings = [%c(YTSettingsSectionItem)
+        itemWithTitle:LOC(@"COPY_SETTINGS")
+        titleDescription:LOC(@"COPY_SETTINGS_DESC")
+        accessibilityIdentifier:nil
+        detailTextBlock:nil
+        selectBlock:^BOOL (YTSettingsCell *cell, NSUInteger arg1) {
+            NSMutableString *settingsString = [NSMutableString string];
+            for (NSString *key in @{ MISSING KEYS }) {
+                BOOL enabled = [[NSUserDefaults standardUserDefaults] boolForKey:key];
+                [settingsString appendFormat:@"%@: %d", key, enabled ? 1 : 0];
+            }
+            [[UIPasteboard generalPasteboard] setString:settingsString];
+            // show a confirmation message or perform some other action here - @arichornlover
+            return YES;
+        }
+    ];
+    [sectionItems addObject:copySettings];
+*/
+
+    YTSettingsSectionItem *pasteSettings = [%c(YTSettingsSectionItem)
+        itemWithTitle:LOC(@"PASTE_SETTINGS")
+        titleDescription:LOC(@"PASTE_SETTINGS_DESC")
+        accessibilityIdentifier:nil
+        detailTextBlock:nil
+        selectBlock:^BOOL (YTSettingsCell *cell, NSUInteger arg1) {
+            NSString *settingsString = [[UIPasteboard generalPasteboard] string];
+
+            if (settingsString.length > 0) {
+                NSArray *lines = [settingsString componentsSeparatedByString:@"\n"];
+
+                for (NSString *line in lines) {
+                    NSArray *components = [line componentsSeparatedByString:@": "];
+                    if (components.count == 2) {
+                        NSString *key = components[0];
+                        NSString *value = components[1];
+                        [[NSUserDefaults standardUserDefaults] setObject:value forKey:key];
+                    }
+                }
+            }
+            [settingsViewController reloadData];
+            SHOW_RELAUNCH_YT_SNACKBAR;
+            return YES;
+        }
+    ];
+    [sectionItems addObject:pasteSettings];
 
     YTSettingsSectionItem *exitYT = [%c(YTSettingsSectionItem)
         itemWithTitle:LOC(@"QUIT_YOUTUBE")
@@ -195,9 +242,9 @@ extern NSBundle *uYouPlusBundle();
     [sectionItems addObject:exitYT];
 
     SECTION_HEADER(LOC(@"📺 App Personalization"));
-    # pragma mark - uYouEnhanced Extras Menu
+    # pragma mark - uYouEnhanced Essential Menu
     YTSettingsSectionItem *customAppMenu = [%c(YTSettingsSectionItem)
-        itemWithTitle:LOC(@"uYouEnhanced Extras Menu")
+        itemWithTitle:LOC(@"UYOUENHANCED_ESSENTIAL_MENU")
         titleDescription:LOC(@"This menu includes App Color Customization & Clearing the Cache 🗑️")
         accessibilityIdentifier:nil
         detailTextBlock:nil
@@ -210,7 +257,7 @@ extern NSBundle *uYouPlusBundle();
     [sectionItems addObject:customAppMenu];
 
     YTSettingsSectionItem *appIcon = [%c(YTSettingsSectionItem)
-        itemWithTitle:LOC(@"Change App Icon")
+        itemWithTitle:LOC(@"CHANGE_APP_ICON")
         titleDescription:nil
         accessibilityIdentifier:nil
         detailTextBlock:nil
@@ -221,6 +268,19 @@ extern NSBundle *uYouPlusBundle();
         }
     ];
     [sectionItems addObject:appIcon];
+
+    YTSettingsSectionItem *clearNotifications = [%c(YTSettingsSectionItem)
+        itemWithTitle:LOC(@"CLEAR_NOTIFICATIONS")
+        titleDescription:LOC(@"CLEAR_NOTIFICATIONS_DESC")
+        accessibilityIdentifier:nil
+        detailTextBlock:nil
+        selectBlock:^BOOL (YTSettingsCell *cell, NSUInteger arg1) {
+            [[UIApplication sharedApplication] cancelAllLocalNotifications];
+            [[UIApplication sharedApplication] setApplicationIconBadgeNumber:0];
+            return YES;
+        }
+    ];
+    [sectionItems addObject:clearNotifications];
 
     # pragma mark - App theme
     SECTION_HEADER(LOC(@"THEME_OPTIONS"));
@@ -272,8 +332,8 @@ extern NSBundle *uYouPlusBundle();
                     }
                 ],
                 [YTSettingsSectionItemClass
-                    checkmarkItemWithTitle:LOC(@"Custom Dark Theme")
-                    titleDescription:LOC(@"In order to use Custom Themes that is in the uYouPlus Button, you will need to select this to be able to use custom colors.")
+                    checkmarkItemWithTitle:LOC(@"CUSTOM_DARK_THEME")
+                    titleDescription:LOC(@"In order to use Custom Themes, go to uYouEnhanced Essential Menu, you will need to press Custom Tint Color and than change the colors.")
                     selectBlock:^BOOL (YTSettingsCell *cell, NSUInteger arg1) {
                         [[NSUserDefaults standardUserDefaults] setInteger:3 forKey:@"appTheme"];
                         [settingsViewController reloadData];
@@ -309,21 +369,38 @@ extern NSBundle *uYouPlusBundle();
     # pragma mark - Video player options
     SECTION_HEADER(LOC(@"VIDEO_PLAYER_OPTIONS"));
 
-    SWITCH_ITEM2(LOC(@"Enable Portrait Fullscreen"), LOC(@"Enables Portrait Fullscreen on the YouTube App. App restart is required. (only for iPhone)"), @"portraitFullscreen_enabled");
+    SWITCH_ITEM3(
+        LOC(@"ENABLE_PORTRAIT_FULLSCREEN"), 
+        LOC(@"ENABLE_PORTRAIT_FULLSCREEN_DESC"), 
+        @"portraitFullscreen_enabled",
+        ({
+            if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone) {
+                [[NSUserDefaults standardUserDefaults] setBool:enable forKey:@"portraitFullscreen_enabled"];
+                SHOW_RELAUNCH_YT_SNACKBAR;
+                return YES;
+            } else {
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Incompatibile" message:@"Portrait Fullscreen Mode is not compatible on iPad." preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+                [alert addAction:okAction];
+                [settingsViewController presentViewController:alert animated:YES completion:nil];
+                return NO;
+            }
+        });
+    );
     SWITCH_ITEM2(LOC(@"SLIDE_TO_SEEK"), LOC(@"SLIDE_TO_SEEK_DESC"), @"slideToSeek_enabled");
-    SWITCH_ITEM2(LOC(@"Enable Tap To Seek"), LOC(@"Jump to anywhere in a video by single-tapping the seek bar"), @"YTTapToSeek_enabled");
+    SWITCH_ITEM2(LOC(@"ENABLE_TAP_TO_SEEK"), LOC(@"ENABLE_TAP_TO_SEEK_DESC"), @"YTTapToSeek_enabled");
     SWITCH_ITEM(LOC(@"DISABLE_DOUBLE_TAP_TO_SEEK"), LOC(@"DISABLE_DOUBLE_TAP_TO_SEEK_DESC"), @"doubleTapToSeek_disabled");
     SWITCH_ITEM(LOC(@"SNAP_TO_CHAPTER"), LOC(@"SNAP_TO_CHAPTER_DESC"), @"snapToChapter_enabled");
     SWITCH_ITEM2(LOC(@"PINCH_TO_ZOOM"), LOC(@"PINCH_TO_ZOOM_DESC"), @"pinchToZoom_enabled");
     SWITCH_ITEM(LOC(@"YT_MINIPLAYER"), LOC(@"YT_MINIPLAYER_DESC"), @"ytMiniPlayer_enabled");
     SWITCH_ITEM2(LOC(@"STOCK_VOLUME_HUD"), LOC(@"STOCK_VOLUME_HUD_DESC"), @"stockVolumeHUD_enabled");
-    SWITCH_ITEM2(LOC(@"Disable pull-to-fullscreen gesture"), LOC(@"Disable the drag gesture to enter vertical fullscreen. Only applies to landscape videos."), @"disablePullToFull_enabled");
-    SWITCH_ITEM(LOC(@"Disable Double tap to skip chapter"), LOC(@"Disable the 2-finger double tap gesture that skips forward/backward by a chapter"), @"disableChapterSkip_enabled");
-    SWITCH_ITEM(LOC(@"Always use remaining time"), LOC(@"Change the default to show time remaining in the player bar"), @"alwaysShowRemainingTime_enabled");
-    SWITCH_ITEM(LOC(@"Disable toggle time remaining"), LOC(@"Disables changing time elapsed to time remaining. Use with other setting to always show remaining time."), @"disableRemainingTime_enabled");
+    SWITCH_ITEM2(LOC(@"DISABLE_PULL_TO_FULLSCREEN_GESTURE"), LOC(@"ENABLE_PORTRAIT_FULLSCREEN_DESC"), @"disablePullToFull_enabled");
+    SWITCH_ITEM(LOC(@"DISABLE_DOUBLE_TAP_TO_SKIP_CHAPTER"), LOC(@"DISABLE_DOUBLE_TAP_TO_SKIP_CHAPTER_DESC"), @"disableChapterSkip_enabled");
+    SWITCH_ITEM(LOC(@"ALWAYS_USE_REMAINING_TIME"), LOC(@"ALWAYS_USE_REMAINING_TIME_DESC"), @"alwaysShowRemainingTime_enabled");
+    SWITCH_ITEM(LOC(@"DISABLE_TOGGLE_TIME_REMAINING"), LOC(@"DISABLE_TOGGLE_TIME_REMAINING_DESC"), @"disableRemainingTime_enabled");
 
     # pragma mark - Video controls overlay options
-    SECTION_HEADER(LOC(@"VIDEO_PLAYER_OPTIONS"));
+    SECTION_HEADER(LOC(@"VIDEO_CONTROLS_OVERLAY_OPTIONS"));
 
     SWITCH_ITEM(LOC(@"Enable Share Button"), LOC(@"Enable the Share Button in video controls overlay."), @"enableShareButton_enabled");
     SWITCH_ITEM(LOC(@"Enable 'Save To Playlist' Button"), LOC(@"Enable the 'Save To Playlist' Button in video controls overlay."), @"enableSaveToButton_enabled");
@@ -348,6 +425,8 @@ extern NSBundle *uYouPlusBundle();
     SWITCH_ITEM2(LOC(@"Hide Dark Overlay Background"), LOC(@"Hide video player's dark overlay background. App restart is required."), @"hideOverlayDarkBackground_enabled");
     SWITCH_ITEM2(LOC(@"Disable Ambient Mode in Fullscreen"), LOC(@"When Enabled, this will Disable the functionality of Ambient Mode from being used in the Video Player when in Fullscreen. App restart is required."), @"disableAmbientMode_enabled");
     SWITCH_ITEM2(LOC(@"Hide Suggested Videos in Fullscreen"), LOC(@"Hide video player's suggested videos whenever in fullscreen. App restart is required."), @"noVideosInFullscreen_enabled");
+    SWITCH_ITEM2(LOC(@"Hide all videos under player"), LOC(@"Remove suggested videos below/next to the video player"), @"noRelatedWatchNexts_enabled");
+
 
    # pragma mark - Shorts controls overlay options
     SECTION_HEADER(LOC(@"SHORTS_CONTROLS_OVERLAY_OPTIONS"));
@@ -1087,6 +1166,7 @@ extern NSBundle *uYouPlusBundle();
     # pragma mark - Miscellaneous
     SECTION_HEADER(LOC(@"MISCELLANEOUS"));
 
+    SWITCH_ITEM2(LOC(@"Adblock Workaround (Lite)"), LOC(@"Uses weaker adblocking code, this will disable uYou's Adblocking Option."), @"uYouAdBlockingWorkaroundLite_enabled");
     SWITCH_ITEM2(LOC(@"Adblock Workaround"), LOC(@"Uses stronger adblocking code"), @"uYouAdBlockingWorkaround_enabled");
     SWITCH_ITEM3(
         LOC(@"Fake Premium"),
@@ -1117,16 +1197,15 @@ extern NSBundle *uYouPlusBundle();
     SWITCH_ITEM(LOC(@"DISABLE_HINTS"), LOC(@"DISABLE_HINTS_DESC"), @"disableHints_enabled");
     SWITCH_ITEM(LOC(@"Stick Navigation Bar"), LOC(@"Enable to make the Navigation Bar stay on the App when scrolling."), @"stickNavigationBar_enabled");
     SWITCH_ITEM2(LOC(@"HIDE_ISPONSORBLOCK"), nil, @"hideSponsorBlockButton_enabled");
-    SWITCH_ITEM2(LOC(@"Hides uYouPlus button"), nil, @"hideuYouPlusButton_enabled");
     SWITCH_ITEM(LOC(@"HIDE_CHIP_BAR"), LOC(@"HIDE_CHIP_BAR_DESC"), @"hideChipBar_enabled");
     SWITCH_ITEM(LOC(@"HIDE_PLAY_NEXT_IN_QUEUE"), LOC(@"HIDE_PLAY_NEXT_IN_QUEUE_DESC"), @"hidePlayNextInQueue_enabled");
     SWITCH_ITEM2(LOC(@"Hide Community Posts"), LOC(@"Hides the Community Posts. App restart is required."), @"hideCommunityPosts_enabled");
     SWITCH_ITEM2(LOC(@"Hide Header Links under channel profile"), LOC(@"Hides the Header Links under any channel profile."), @"hideChannelHeaderLinks_enabled");
-    SWITCH_ITEM2(LOC(@"Hide all videos under player"), LOC(@"Hides all videos below the player."), @"noRelatedWatchNexts_enabled");
     SWITCH_ITEM2(LOC(@"IPHONE_LAYOUT"), LOC(@"IPHONE_LAYOUT_DESC"), @"iPhoneLayout_enabled");
     SWITCH_ITEM2(LOC(@"NEW_MINIPLAYER_STYLE"), LOC(@"NEW_MINIPLAYER_STYLE_DESC"), @"bigYTMiniPlayer_enabled");
     SWITCH_ITEM2(LOC(@"YT_RE_EXPLORE"), LOC(@"YT_RE_EXPLORE_DESC"), @"reExplore_enabled");
     SWITCH_ITEM2(LOC(@"Hide Indicators"), LOC(@"Hides all Indicators that were in the App."), @"hideSubscriptionsNotificationBadge_enabled");
+    SWITCH_ITEM2(LOC(@"Fix Casting"), LOC(@"Changes a few A/B flags to fix casting"), @"fixCasting_enabled");
     SWITCH_ITEM(LOC(@"ENABLE_FLEX"), LOC(@"ENABLE_FLEX_DESC"), @"flex_enabled");
 
     if ([settingsViewController respondsToSelector:@selector(setSectionItems:forCategory:title:icon:titleDescription:headerHidden:)])

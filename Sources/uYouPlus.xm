@@ -1,5 +1,4 @@
 #import "uYouPlus.h"
-#import "RootOptionsController.h"
 
 // Tweak's bundle for Localizations support - @PoomSmart - https://github.com/PoomSmart/YouPiP/commit/aea2473f64c75d73cab713e1e2d5d0a77675024f
 NSBundle *uYouPlusBundle() {
@@ -79,13 +78,34 @@ static int contrastMode() {
 }
 %end
 
-// Enable Alternate Icons
+// Enable Alternate Icons - @arichornlover
 %hook UIApplication
 - (BOOL)supportsAlternateIcons {
     return YES;
 }
 %end
 
+// uYou AdBlocking Workaround LITE (This Version only removes ads from Videos/Shorts) - @PoomSmart
+%group uYouAdBlockingWorkaroundLite
+%hook YTReelInfinitePlaybackDataSource
+- (void)setReels:(NSMutableOrderedSet <YTReelModel *> *)reels {
+    [reels removeObjectsAtIndexes:[reels indexesOfObjectsPassingTest:^BOOL(YTReelModel *obj, NSUInteger idx, BOOL *stop) {
+        return [obj respondsToSelector:@selector(videoType)] ? obj.videoType == 3 : NO;
+    }]];
+    %orig;
+}
+%end
+
+%hook YTAdsInnerTubeContextDecorator
+- (void)decorateContext:(id)context {}
+%end
+
+%hook YTAccountScopedAdsInnerTubeContextDecorator
+- (void)decorateContext:(id)context {}
+%end
+%end
+
+// uYou AdBlocking Workaround (for uYou Option) - @PoomSmart
 %group uYouAdBlockingWorkaround
 // Workaround: uYou 3.0.3 Adblock fix - @PoomSmart
 %hook YTReelInfinitePlaybackDataSource
@@ -257,6 +277,18 @@ NSData *cellDividerData;
 - (BOOL)respectDeviceCaptionSetting { return NO; } // YouRememberCaption: https://poomsmart.github.io/repo/depictions/youremembercaption.html
 - (BOOL)isLandscapeEngagementPanelSwipeRightToDismissEnabled { return YES; } // Swipe right to dismiss the right panel in fullscreen mode
 - (BOOL)enableModularPlayerBarController { return NO; } // fixes some of the iSponorBlock problems
+%end
+
+// Fix Casting: https://github.com/arichornlover/uYouEnhanced/issues/606#issuecomment-2098289942
+%group gFixCasting
+%hook YTColdConfig
+- (BOOL)cxClientEnableIosLocalNetworkPermissionReliabilityFixes { return YES; }
+- (BOOL)cxClientEnableIosLocalNetworkPermissionUsingSockets { return NO; }
+- (BOOL)cxClientEnableIosLocalNetworkPermissionWifiFixes { return YES; }
+%end
+%hook YTHotConfig
+- (BOOL)isPromptForLocalNetworkPermissionsEnabled { return YES; }
+%end
 %end
 
 // NOYTPremium - https://github.com/PoomSmart/NoYTPremium/
@@ -1015,7 +1047,7 @@ NSData *cellDividerData;
 %end
 
 // Hide Video Title (in Fullscreen) - @arichornlover
-%hook YTMainAppVideoPlayerOverlayView
+%hook YTMainAppControlsOverlayView
 - (BOOL)titleViewHidden {
     return IS_ENABLED(@"hideVideoTitle_enabled") ? YES : %orig;
 }
@@ -1633,6 +1665,9 @@ static BOOL findCell(ASNodeController *nodeController, NSArray <NSString *> *ide
     if (IS_ENABLED(@"disablePullToFull_enabled")) {
         %init(gDisablePullToFull);
     }
+    if (IS_ENABLED(@"uYouAdBlockingWorkaroundLite_enabled")) {
+        %init(uYouAdBlockingWorkaroundLite);
+    }
     if (IS_ENABLED(@"uYouAdBlockingWorkaround_enabled")) {
         %init(uYouAdBlockingWorkaround);
     }
@@ -1641,6 +1676,9 @@ static BOOL findCell(ASNodeController *nodeController, NSArray <NSString *> *ide
     }
     if (IS_ENABLED(@"hideDoubleTapToSeekOverlay_enabled")) {
         %init(gHideDoubleTapToSeekOverlay);
+    }
+    if (IS_ENABLED(@"fixCasting_enabled")) {
+        %init(gFixCasting);
     }
 
     // YTNoModernUI - @arichorn
@@ -1679,6 +1717,10 @@ static BOOL findCell(ASNodeController *nodeController, NSArray <NSString *> *ide
     if (![allKeys containsObject:@"YouPiPEnabled"]) { 
         [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"YouPiPEnabled"]; 
     }
+    if (![allKeys containsObject:@"uYouAdBlockingWorkaroundLite_enabled"]) { 
+        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"uYouAdBlockingWorkaroundLite_enabled"]; 
+        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"removeYouTubeAds"]; 
+    }
     if (![allKeys containsObject:@"uYouAdBlockingWorkaround_enabled"]) { 
         [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"uYouAdBlockingWorkaround_enabled"]; 
     }
@@ -1691,5 +1733,9 @@ static BOOL findCell(ASNodeController *nodeController, NSArray <NSString *> *ide
     // Set default to disabled
     if (![allKeys containsObject:@"showPlaybackRate"]) { 
         [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"showPlaybackRate"]; 
+    }
+    // Set video casting fix default to enabled
+    if (![allKeys containsObject:@"fixCasting_enabled"]) { 
+        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"fixCasting_enabled"]; 
     }
 }
